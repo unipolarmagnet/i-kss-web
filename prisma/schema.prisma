@@ -1,0 +1,120 @@
+// Prisma schema for I-KS-WEB
+// SQLite, file-based DB at prisma/dev.db (gitignored)
+// See memory/project_i_ks_web.md for the domain model rationale.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  name        String?
+  image       String?
+  role        String   @default("student") // "admin" | "student"
+  classId     Int?
+  class       Class?   @relation(fields: [classId], references: [id], onDelete: SetNull)
+  preferences Preference[]
+  results     AssignmentResult[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Class {
+  id                Int      @id @default(autoincrement())
+  name              String
+  enrollmentOpen    Boolean  @default(true)
+  members           User[]
+  assignmentClasses AssignmentClass[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model TopicList {
+  id          Int          @id @default(autoincrement())
+  name        String
+  topics      Topic[]
+  assignments Assignment[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Topic {
+  id          Int       @id @default(autoincrement())
+  listId      Int
+  list        TopicList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  displayId   Int
+  name        String
+  description String    @default("")
+  capacity    Int       @default(1)
+  preferences Preference[]
+  results     AssignmentResult[]
+
+  @@unique([listId, displayId])
+}
+
+model Assignment {
+  id          Int       @id @default(autoincrement())
+  listId      Int
+  list        TopicList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  mode        String    // "shared" | "separate"
+  classes     AssignmentClass[]
+  preferences Preference[]
+  results     AssignmentResult[]
+  reopenedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model AssignmentClass {
+  assignmentId Int
+  classId      Int
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  class        Class      @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@id([assignmentId, classId])
+}
+
+model Preference {
+  id           Int        @id @default(autoincrement())
+  studentId    String
+  assignmentId Int
+  rank         Int        // 1..3
+  topicId      Int
+  phase        String     @default("initial") // "initial" | "reopen"
+  submittedAt  DateTime   @default(now())
+  student      User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  topic        Topic      @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, assignmentId, rank, phase])
+}
+
+model AssignmentResult {
+  id           Int        @id @default(autoincrement())
+  assignmentId Int
+  studentId    String
+  topicId      Int?
+  round        Int
+  phase        String     @default("initial")
+  assignedAt   DateTime   @default(now())
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student      User       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  topic        Topic?     @relation(fields: [topicId], references: [id], onDelete: SetNull)
+
+  @@unique([assignmentId, studentId, phase])
+}
+
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  at         DateTime @default(now())
+  actorEmail String?
+  actorRole  String?
+  kind       String
+  payload    String   // JSON
+}
