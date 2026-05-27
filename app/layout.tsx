@@ -4,7 +4,7 @@ import Script from "next/script";
 import ImpersonationBanner from "@/components/ImpersonationBanner";
 
 export const metadata: Metadata = {
-  title: "I-KSS.dev — Kvalita softvérových systémov",
+  title: "I-KSS.dev",
   description: "Predmetová stránka KSS — FEI STU",
 };
 
